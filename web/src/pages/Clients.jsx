@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
+import { supabase } from '../lib/supabase.js';
 
 export default function Clients() {
   const [clients, setClients] = useState([]);
@@ -8,6 +9,22 @@ export default function Clients() {
 
   async function load() { setClients(await api('/clients')); }
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    function onMessage(e) {
+      if (e.data?.type === 'meta-oauth') load();
+    }
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
+  async function connectFacebook(clientId) {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+    const url = `/api/oauth/meta/start?client_id=${clientId}&access_token=${encodeURIComponent(token)}`;
+    window.open(url, 'meta-oauth', 'width=600,height=700');
+  }
 
   return (
     <div>
@@ -22,9 +39,14 @@ export default function Clients() {
             <strong>{c.name}</strong>
             <div className="muted">FB Page: {c.facebook_page_id || '—'}</div>
             <div className="muted">IG Business: {c.instagram_business_id || '—'}</div>
-            <button className="secondary" style={{ marginTop: 8 }} onClick={() => { setCreating(false); setEditing(c); }}>
-              Edit
-            </button>
+            <div className="row" style={{ marginTop: 8 }}>
+              <button className="secondary" onClick={() => { setCreating(false); setEditing(c); }}>
+                Edit
+              </button>
+              <button onClick={() => connectFacebook(c.id)}>
+                {c.facebook_page_id ? 'Reconnect Facebook' : 'Connect Facebook'}
+              </button>
+            </div>
           </div>
         ))}
       </div>

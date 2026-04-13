@@ -8,6 +8,7 @@ import DesignDetail from './pages/DesignDetail.jsx';
 import NewDesign from './pages/NewDesign.jsx';
 import Calendar from './pages/Calendar.jsx';
 import Clients from './pages/Clients.jsx';
+import Settings from './pages/Settings.jsx';
 
 export default function App() {
   const { session, profile, loading, signOut } = useAuth();
@@ -26,6 +27,7 @@ export default function App() {
         {(profile.role === 'admin' || profile.role === 'account_manager') && (
           <NavLink to="/clients">Clients</NavLink>
         )}
+        <NavLink to="/settings">Settings</NavLink>
         <div className="spacer" />
         <div className="me">
           <div>{profile.full_name}</div>
@@ -44,6 +46,7 @@ export default function App() {
           <Route path="/designs/:id" element={<DesignDetail />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/clients" element={<Clients />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>

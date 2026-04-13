@@ -9,11 +9,15 @@ create extension if not exists "pgcrypto";
 create type user_role as enum ('admin', 'account_manager', 'designer', 'client');
 
 create table if not exists profiles (
-  id          uuid primary key references auth.users(id) on delete cascade,
-  full_name   text not null,
-  role        user_role not null,
-  client_id   uuid,                      -- set when role = 'client'
-  created_at  timestamptz not null default now()
+  id                  uuid primary key references auth.users(id) on delete cascade,
+  full_name           text not null,
+  role                user_role not null,
+  client_id           uuid,              -- set when role = 'client'
+  email               text,              -- mirrored from auth.users for notifications
+  slack_webhook_url   text,              -- optional per-user Slack DM webhook
+  notify_email        boolean not null default true,
+  notify_slack        boolean not null default false,
+  created_at          timestamptz not null default now()
 );
 
 -- ----------------------------------------------------------------------------
