@@ -85,7 +85,24 @@ router.get('/summary', async (req, res) => {
     return { ...d, facebook: fb || null, instagram: ig || null, totals: sum };
   });
 
-  res.json({ totals, per_design: perDesign });
+  // Daily timeseries for the chart — bucket every published design into the
+  // day it was published and sum its latest metrics.
+  const byDay = new Map();
+  const dayKey = (iso) => iso.slice(0, 10);
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000);
+    byDay.set(dayKey(d.toISOString()), { date: dayKey(d.toISOString()), ...emptyTotals(), posts: 0 });
+  }
+  for (const d of perDesign) {
+    const key = dayKey(d.updated_at);
+    const bucket = byDay.get(key);
+    if (!bucket) continue;
+    bucket.posts += 1;
+    for (const k of Object.keys(d.totals)) bucket[k] += d.totals[k] || 0;
+  }
+  const timeseries = Array.from(byDay.values());
+
+  res.json({ totals, per_design: perDesign, timeseries });
 });
 
 function emptyTotals() {

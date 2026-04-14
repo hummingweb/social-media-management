@@ -103,6 +103,35 @@ router.post('/checkout', requireAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Invoice history for the caller's client
+// ---------------------------------------------------------------------------
+router.get('/invoices', requireAuth, async (req, res) => {
+  const client = await resolveClient(req);
+  if (!client?.stripe_customer_id) return res.json([]);
+
+  const list = await stripe.invoices.list({
+    customer: client.stripe_customer_id,
+    limit: 24,
+  });
+
+  res.json(
+    list.data.map((inv) => ({
+      id: inv.id,
+      number: inv.number,
+      status: inv.status,
+      amount_due: inv.amount_due,
+      amount_paid: inv.amount_paid,
+      currency: inv.currency,
+      created: inv.created,
+      period_start: inv.period_start,
+      period_end: inv.period_end,
+      hosted_invoice_url: inv.hosted_invoice_url,
+      invoice_pdf: inv.invoice_pdf,
+    }))
+  );
+});
+
+// ---------------------------------------------------------------------------
 // Customer Portal — handles upgrade, downgrade, cancel, payment method, etc.
 // ---------------------------------------------------------------------------
 router.post('/portal', requireAuth, async (req, res) => {

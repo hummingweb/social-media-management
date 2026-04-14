@@ -10,6 +10,7 @@ export default function Billing() {
   const [clientId, setClientId] = useState('');
   const [plans, setPlans] = useState([]);
   const [sub, setSub] = useState(null);
+  const [invoices, setInvoices] = useState([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -29,6 +30,7 @@ export default function Billing() {
     const q = isClient ? '' : clientId ? `?client_id=${clientId}` : null;
     if (q === null) return;
     api(`/billing/subscription${q}`).then(setSub).catch(console.error);
+    api(`/billing/invoices${q}`).then(setInvoices).catch(console.error);
   }, [clientId, isClient]);
 
   async function startCheckout(planId) {
@@ -126,6 +128,48 @@ export default function Billing() {
 
       {err && <div className="card" style={{ borderColor: 'var(--danger)' }}>{err}</div>}
 
+      <h3>Invoice history</h3>
+      <div className="card">
+        {invoices.length === 0 ? (
+          <div className="muted">No invoices yet.</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th align="left">Invoice</th>
+                <th align="left">Date</th>
+                <th align="right">Amount</th>
+                <th align="left">Status</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.map((inv) => (
+                <tr key={inv.id} style={{ borderTop: '1px solid var(--border)' }}>
+                  <td style={{ padding: '8px 0' }}>{inv.number || inv.id}</td>
+                  <td>{new Date(inv.created * 1000).toLocaleDateString()}</td>
+                  <td align="right">
+                    {formatMoney(inv.amount_paid || inv.amount_due, inv.currency)}
+                  </td>
+                  <td>
+                    <span className={`badge ${invoiceBadgeClass(inv.status)}`}>{inv.status}</span>
+                  </td>
+                  <td align="right">
+                    {inv.hosted_invoice_url && (
+                      <a href={inv.hosted_invoice_url} target="_blank" rel="noreferrer">View</a>
+                    )}
+                    {inv.hosted_invoice_url && inv.invoice_pdf && <span className="muted"> · </span>}
+                    {inv.invoice_pdf && (
+                      <a href={inv.invoice_pdf} target="_blank" rel="noreferrer">PDF</a>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
       <h3>Plans</h3>
       <div className="grid grid-3">
         {plans.map((p) => {
@@ -153,4 +197,25 @@ export default function Billing() {
       </div>
     </div>
   );
+}
+
+function formatMoney(amountMinor, currency) {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: (currency || 'usd').toUpperCase(),
+    }).format((amountMinor || 0) / 100);
+  } catch {
+    return `${((amountMinor || 0) / 100).toFixed(2)} ${currency || ''}`.trim();
+  }
+}
+
+function invoiceBadgeClass(status) {
+  switch (status) {
+    case 'paid': return 'approved';
+    case 'open': return 'in_review';
+    case 'uncollectible':
+    case 'void': return 'failed';
+    default: return 'draft';
+  }
 }
