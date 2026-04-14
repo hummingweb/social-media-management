@@ -9,6 +9,8 @@ import NewDesign from './pages/NewDesign.jsx';
 import Calendar from './pages/Calendar.jsx';
 import Clients from './pages/Clients.jsx';
 import Settings from './pages/Settings.jsx';
+import Billing from './pages/Billing.jsx';
+import Analytics from './pages/Analytics.jsx';
 
 export default function App() {
   const { session, profile, loading, signOut } = useAuth();
@@ -24,6 +26,8 @@ export default function App() {
         <NavLink to="/" end>Dashboard</NavLink>
         <NavLink to="/designs">Designs</NavLink>
         <NavLink to="/calendar">Calendar</NavLink>
+        <NavLink to="/analytics">Analytics</NavLink>
+        <NavLink to="/billing">Billing</NavLink>
         {(profile.role === 'admin' || profile.role === 'account_manager') && (
           <NavLink to="/clients">Clients</NavLink>
         )}
@@ -46,6 +50,8 @@ export default function App() {
           <Route path="/designs/:id" element={<DesignDetail />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/clients" element={<Clients />} />
+          <Route path="/billing" element={<Billing />} />
+          <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

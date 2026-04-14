@@ -2,11 +2,15 @@ import cron from 'node-cron';
 import { supabaseAdmin } from './supabase.js';
 import { publishToFacebookPage, publishToInstagram } from './meta.js';
 import { notify } from './notify.js';
+import { refreshDesignAnalytics, refreshAllRecent } from './analytics.js';
 
-// Runs every minute, finds slots that are due, publishes them.
+// Runs every minute (publish) + hourly (analytics refresh).
 export function startScheduler() {
   cron.schedule('* * * * *', runOnce);
-  console.log('[scheduler] started — checking every minute');
+  cron.schedule('0 * * * *', () => {
+    refreshAllRecent().catch((e) => console.error('[scheduler] analytics refresh failed:', e));
+  });
+  console.log('[scheduler] started — publish 1m, analytics 1h');
 }
 
 export async function runOnce() {
@@ -97,4 +101,14 @@ async function publishDesign(design, slot) {
       ? `"${design.title}" was published to ${client.name}.`
       : `Publishing "${design.title}" failed: ${publishError}`,
   });
+
+  // Take an initial analytics snapshot ~5 min after publish so engagement
+  // metrics have started to populate. (Best-effort, fire and forget.)
+  if (success) {
+    setTimeout(() => {
+      refreshDesignAnalytics(design.id).catch((e) =>
+        console.error('[scheduler] initial analytics refresh failed:', e)
+      );
+    }, 5 * 60 * 1000);
+  }
 }

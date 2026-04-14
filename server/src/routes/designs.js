@@ -61,6 +61,36 @@ router.post(
 
     if (!req.files?.length) return res.status(400).json({ error: 'at least one file required' });
 
+    // Enforce monthly post limit if the client is on a metered plan.
+    const { data: clientRow } = await supabaseAdmin
+      .from('clients')
+      .select('plan_id, subscription_status, current_period_end')
+      .eq('id', client_id)
+      .single();
+    if (clientRow?.plan_id) {
+      const { data: plan } = await supabaseAdmin
+        .from('plans')
+        .select('monthly_post_limit')
+        .eq('id', clientRow.plan_id)
+        .single();
+      if (plan?.monthly_post_limit != null) {
+        const since = clientRow.current_period_end
+          ? new Date(new Date(clientRow.current_period_end).getTime() - 30 * 86400000)
+          : new Date(Date.now() - 30 * 86400000);
+        const { count } = await supabaseAdmin
+          .from('designs')
+          .select('id', { count: 'exact', head: true })
+          .eq('client_id', client_id)
+          .in('status', ['scheduled', 'published'])
+          .gte('updated_at', since.toISOString());
+        if ((count || 0) >= plan.monthly_post_limit) {
+          return res.status(402).json({
+            error: `Monthly post limit reached (${plan.monthly_post_limit}). Upgrade the plan to add more.`,
+          });
+        }
+      }
+    }
+
     const { data: design, error } = await supabaseAdmin
       .from('designs')
       .insert({

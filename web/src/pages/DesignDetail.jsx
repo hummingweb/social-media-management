@@ -10,6 +10,7 @@ export default function DesignDetail() {
   const [comment, setComment] = useState('');
   const [slots, setSlots] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [analytics, setAnalytics] = useState(null);
 
   async function load() {
     const d = await api(`/designs/${id}`);
@@ -18,6 +19,17 @@ export default function DesignDetail() {
       const s = await api(`/slots?client_id=${d.client_id}&status=open`);
       setSlots(s);
     }
+    if (d.status === 'published') {
+      api(`/analytics/design/${id}`).then(setAnalytics).catch(() => {});
+    }
+  }
+
+  async function refreshAnalytics() {
+    setBusy(true);
+    try {
+      await api(`/analytics/design/${id}/refresh`, { method: 'POST' });
+      setAnalytics(await api(`/analytics/design/${id}`));
+    } finally { setBusy(false); }
   }
 
   useEffect(() => { load().catch(console.error); }, [id]);
@@ -107,6 +119,38 @@ export default function DesignDetail() {
       {design.publish_error && (
         <div className="card" style={{ borderColor: 'var(--danger)' }}>
           <strong>Publish error:</strong> {design.publish_error}
+        </div>
+      )}
+
+      {design.status === 'published' && analytics && (
+        <div className="card">
+          <div className="row between">
+            <h3 style={{ margin: 0 }}>Analytics</h3>
+            <button className="secondary" disabled={busy} onClick={refreshAnalytics}>
+              Refresh
+            </button>
+          </div>
+          {Object.keys(analytics.latest).length === 0 && (
+            <div className="muted" style={{ marginTop: 8 }}>No metrics yet — try refreshing in a few minutes.</div>
+          )}
+          {Object.entries(analytics.latest).map(([platform, row]) => (
+            <div key={platform} style={{ marginTop: 12 }}>
+              <strong style={{ textTransform: 'capitalize' }}>{platform}</strong>
+              <div className="muted">as of {new Date(row.fetched_at).toLocaleString()}</div>
+              <div className="grid grid-3" style={{ marginTop: 8 }}>
+                {['impressions', 'reach', 'likes', 'comments', 'shares', 'saves'].map((k) =>
+                  row[k] != null ? (
+                    <div key={k}>
+                      <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase' }}>{k}</div>
+                      <div style={{ fontSize: 20, fontWeight: 600 }}>
+                        {new Intl.NumberFormat().format(row[k])}
+                      </div>
+                    </div>
+                  ) : null
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
